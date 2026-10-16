@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YMYB Net · P2P</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0d0f;
+      --card: #161618;
+      --border: #242428;
+      --text: #e8e8ec;
+      --dim: #52525c;
+      --accent: #7effa0;
+      --accent-dim: rgba(126,255,160,0.07);
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .app {
+      width: 500px;
+      min-height: 640px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 0 1px rgba(126,255,160,0.05), 0 32px 80px rgba(0,0,0,0.6);
+    }
+    .statusbar {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+      margin-bottom: 28px;
+    }
+    .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); display:inline-block; margin-right:6px; }
+    .screen { display: none; flex-direction: column; flex: 1; gap: 16px; }
+    .screen.active { display: flex; }
+
+    /* HOME */
+    .home-center { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:48px; }
+    .logo { text-align:center; }
+    .logo-sub { font-size:11px; letter-spacing:0.3em; color:var(--dim); margin-bottom:12px; text-transform:uppercase; }
+    .logo-title { font-size:42px; font-family:var(--font-display); font-weight:300; color:var(--text); letter-spacing:-0.02em; }
+    .logo-title span { color:var(--accent); }
+    .mode-cards { display:flex; gap:20px; }
+    .mode-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 44px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      min-width: 180px;
+      transition: all 0.2s;
+    }
+    .mode-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+    .mode-icon { font-size:36px; color:var(--accent); }
+    .mode-label { font-size:16px; font-weight:600; color:var(--text); font-family:var(--font-display); }
+    .mode-desc { font-size:12px; color:var(--dim); }
+
+    /* SHARED */
+    .topbar { display:flex; align-items:center; gap:12px; }
+    .topbar-title { font-family:var(--font-display); font-size:18px; color:var(--text); }
+    .btn-back {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 16px;
+      font-family: var(--font-mono);
+    }
+    .btn-back:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0a0a;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    input[type=text], input[type=number], input[type=search] {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: var(--font-mono);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--dim); }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* DOWNLOAD - LIST */
+    .filters { display:flex; gap:10px; }
+    .filters input:first-child { flex:1; }
+    .file-count { font-size:11px; color:var(--dim); }
+    .file-list { display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; }
+    .file-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.15s;
+    }
+    .file-item:hover { border-color: var(--accent); }
+    .file-icon { font-size:22px; color:var(--accent); min-width:28px; }
+    .file-info { flex:1; }
+    .file-name { font-size:14px; font-weight:600; color:var(--text); margin-bottom:3px; }
+    .file-meta { font-size:12px; color:var(--dim); }
+    .file-peers { text-align:right; }
+    .peer-count { font-size:11px; color:var(--accent); }
+    .file-hash { font-size:10px; font-family:var(--font-mono); color:var(--dim); margin-top:2px; }
+    .empty { text-align:center; color:var(--dim); margin-top:40px; font-size:14px; }
+
+    /* DOWNLOAD - PEERS */
+    .selected-file {
+      background: var(--card);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .section-label { font-size:11px; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase; }
+    .peer-assignments { display:flex; flex-direction:column; gap:10px; flex:1; overflow-y:auto; }
+    .peer-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+    }
+    .peer-header { display:flex; justify-content:space-between; margin-bottom:8px; }
+    .peer-addr { font-family:var(--font-mono); font-size:13px; color:var(--text); }
+    .piece-count { font-size:12px; color:var(--accent); background:var(--accent-dim); padding:2px 8px; border-radius:6px; }
+    .pieces-tags { display:flex; flex-wrap:wrap; gap:4px; }
+    .piece-tag {
+      font-size:10px; font-family:var(--font-mono);
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:4px; padding:2px 6px; color:var(--dim);
+    }
+
+    /* DOWNLOAD - PROGRESS */
+    .progress-file { font-family:var(--font-display); font-size:18px; color:var(--text); display:flex; align-items:center; gap:12px; }
+    .progress-peers { display:flex; flex-direction:column; gap:10px; }
+    .progress-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+    .progress-header { display:flex; justify-content:space-between; margin-bottom:10px; }
+    .progress-bar-bg { height:6px; background:var(--bg); border-radius:3px; overflow:hidden; }
+    .progress-bar { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; width:0%; }
+    .progress-pieces { font-size:11px; color:var(--dim); margin-top:8px; }
+    .log-box {
+      flex:1; background:var(--card); border-radius:12px; padding:16px;
+      border:1px solid var(--border); overflow-y:auto;
+      font-family:var(--font-mono); font-size:11px; color:var(--dim);
+      min-height: 120px;
+    }
+
+    /* DONE */
+    .done-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:24px; }
+    .done-icon { font-size:64px; }
+    .done-title { font-size:24px; font-family:var(--font-display); color:var(--accent); }
+    .done-sub { font-size:14px; color:var(--dim); text-align:center; }
+
+    /* UPLOAD */
+    .dropzone {
+      flex:1; border:2px dashed var(--border); border-radius:20px;
+      display:flex; flex-direction:column; align-items:center;
+      justify-content:center; gap:16px; cursor:pointer; transition:all 0.2s;
+      min-height: 200px;
+    }
+    .dropzone:hover, .dropzone.dragging { border-color:var(--accent); background:var(--accent-dim); }
+    .dropzone-icon { font-size:48px; color:var(--dim); transition:color 0.2s; }
+    .dropzone:hover .dropzone-icon { color:var(--accent); }
+    .dropzone-title { font-size:16px; color:var(--text); }
+    .dropzone-sub { font-size:13px; color:var(--dim); }
+    .confirm-card {
+      background:var(--card); border:1px solid var(--border); border-radius:12px;
+      padding:12px 20px; font-size:12px; color:var(--dim); width:100%;
+    }
+    .confirm-card div { margin-bottom:6px; }
+    .confirm-card span { color:var(--text); font-family:var(--font-mono); }
+    .upload-progress { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:28px; }
+    .upload-progress-bar { width:100%; max-width:340px; }
+    .upload-bar-bg { height:8px; background:var(--card); border-radius:4px; overflow:hidden; }
+    .upload-bar { height:100%; background:var(--accent); border-radius:4px; transition:width 0.2s; width:0%; }
+    .upload-bar-labels { display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:var(--dim); }
+
+    /* PATH INPUT for upload */
+    .path-section { display:flex; flex-direction:column; gap:10px; }
+    .path-label { font-size:12px; color:var(--dim); }
+    .path-input-row { display:flex; gap:8px; }
+    .path-input-row input { flex:1; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Status bar -->
+  <div class="statusbar">
+    <span><span class="dot"></span>TRACKER · localhost:9041</span>
+    <span id="peer-port-label">peer:—</span>
+  </div>
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="home-center">
+      <div class="logo">
+        <div class="logo-sub">P2P Network</div>
+        <div class="logo-title">YMYB<span>Net</span></div>
+      </div>
+      <div class="mode-cards">
+        <div class="mode-card" onclick="goDownload()">
+          <div class="mode-icon">↓</div>
+          <div class="mode-label">Download</div>
+          <div class="mode-desc">Fetch files from peers</div>
+        </div>
+        <div class="mode-card" onclick="goUpload()">
+          <div class="mode-icon">↑</div>
+          <div class="mode-label">Upload</div>
+          <div class="mode-desc">Share files with network</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOWNLOAD : LIST -->
+  <div class="screen" id="screen-dl-list">
+    <div class="topbar">
+      <button class="btn-back" onclick="goHome()">←</button>
+      <span class="topbar-title">Télécharger</span>
+    </div>
+    <div class="filters">
+      <input type="search" id="search-name" placeholder="Rechercher un fichier..." oninput="filterFiles()" />
+      <input type="number" id="search-size" placeholder="Taille max " style="width:150px" oninput="filterFiles()" />
+    </div>
+    <div class="file-count" id="file-count">Chargement...</div>
+    <div class="file-list" id="file-list"></div>
+  </div>
+
+  <!-- DOWNLOAD : PEER ASSIGNMENT -->
+  <div class="screen" id="screen-dl-peers">
+    <div class="topbar">
+      <button class="btn-back" onclick="showScreen('screen-dl-list')">←</button>
+      <span class="topbar-title">Assignation des pièces</span>
+    </div>
+    <div class="selected-file" id="selected-file-card"></div>
+    <div class="section-label">Distribution round-robin</div>
+    <div class="peer-assignments" id="peer-assignments"></div>
+    <button class="btn-primary" onclick="startDownload()" style="width:100%">↓ Lancer le téléchargement</button>
+  </div>
+
+  <!-- DOWNLOAD : PROGRESS -->
+  <div class="screen" id="screen-dl-progress">
+    <div class="progress-file" id="progress-filename"></div>
+    <div class="progress-peers" id="progress-peers"></div>
+    <div class="log-box" id="log-box"></div>
+  </div>
+
+  <!-- UPLOAD : PICK -->
+  <div class="screen" id="screen-ul-pick">
+    <div class="topbar">
+      <button class="btn-back" onclick="goHome()">←</button>
+      <span class="topbar-title">Uploader un fichier</span>
+    </div>
+    <div class="dropzone" id="dropzone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault(); this.classList.add('dragging')"
+         ondragleave="this.classList.remove('dragging')"
+         ondrop="handleDrop(event)">
+      <div class="dropzone-icon">↑</div>
+      <div>
+        <div class="dropzone-title">Glissez un fichier ici</div>
+        <div class="dropzone-sub">ou cliquez pour parcourir</div>
+      </div>
+    </div>
+    <div class="path-section">
+      <div class="path-label">Ou entrez le chemin directement :</div>
+      <div class="path-input-row">
+        <input type="text" id="manual-path" placeholder="ex: test_files/mon_fichier.txt" />
+        <button class="btn-primary" onclick="confirmManualPath()">→</button>
+      </div>
+    </div>
+    <input type="file" id="file-input" style="display:none" onchange="handleFileInput(event)" />
+  </div>
+
+  <!-- UPLOAD : CONFIRM -->
+  <div class="screen" id="screen-ul-confirm">
+    <div class="topbar">
+      <button class="btn-back" onclick="showScreen('screen-ul-pick')">←</button>
+      <span class="topbar-title">Confirmer l'upload</span>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;">
+      <div style="font-size:56px" id="upload-icon">⊡</div>
+      <div style="text-align:center">
+        <div style="font-size:18px; font-weight:600; color:var(--text); margin-bottom:6px" id="upload-filename"></div>
+        <div style="font-size:14px; color:var(--dim)" id="upload-filesize"></div>
+      </div>
+      <div class="confirm-card">
+        <div>📁 Chemin : <span id="upload-path"></span></div>
+        <div>🌐 Le fichier sera annoncé au tracker</div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="doUpload()" style="width:100%">↑ Uploader sur le réseau</button>
+  </div>
+
+  <!-- UPLOAD : PROGRESS -->
+  <div class="screen" id="screen-ul-progress">
+    <div class="upload-progress">
+      <div style="font-family:var(--font-display); font-size:18px; color:var(--text)">Envoi en cours...</div>
+      <div style="font-size:14px; color:var(--dim)" id="upload-progress-name"></div>
+      <div class="upload-progress-bar">
+        <div class="upload-bar-bg"><div class="upload-bar" id="upload-bar"></div></div>
+        <div class="upload-bar-labels">
+          <span id="upload-status-label">Annonce au tracker...</span>
+          <span id="upload-pct">0%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DONE (shared) -->
+  <div class="screen" id="screen-done">
+    <div class="done-screen">
+      <div class="done-icon">✦</div>
+      <div class="done-title" id="done-title">Terminé</div>
+      <div class="done-sub" id="done-sub"></div>
+      <button class="btn-primary" onclick="goHome()">← Retour</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = window.location.origin; // Assumes API is served from the same origin
+  let allFiles = [];
+  let selectedFile = null;
+  let peerAssignments = {};
+  let uploadPath = '';
+  uploadFile = null;
+
+  // ── NAVIGATION ─────────────────────────────────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function goHome() { showScreen('screen-home'); }
+
+  function goDownload() {
+    showScreen('screen-dl-list');
+    loadFiles();
+  }
+
+  function goUpload() { showScreen('screen-ul-pick'); }
+
+  // ── DOWNLOAD : LIST ─────────────────────────────────────────────────────────
+  async function loadFiles() {
+    document.getElementById('file-count').textContent = 'Chargement...';
+    try {
+      const res = await fetch(`${API}/api/files`);
+      allFiles = await res.json();
+      renderFiles(allFiles);
+    } catch(e) {
+      document.getElementById('file-count').textContent = 'Erreur de connexion au serveur';
+      document.getElementById('file-list').innerHTML = '<div class="empty">Impossible de contacter le backend Java.<br>Vérifiez que le peer tourne bien.</div>';
+    }
+  }
+
+  async function filterFiles() {
+    const name = document.getElementById('search-name').value.trim();
+    const maxSize = document.getElementById('search-size').value.trim();
+    try {
+      let url = `${API}/api/files?`;
+      if (name) url += `name=${encodeURIComponent(name)}&`;
+      if (maxSize) url += `maxsize=${encodeURIComponent(maxSize)}`;
+      const res = await fetch(url);
+      allFiles = await res.json();
+      renderFiles(allFiles);
+    } catch(e) {
+      renderFiles([]);
+    }
+  }
+
+  function renderFiles(files) {
+    const list = document.getElementById('file-list');
+    document.getElementById('file-count').textContent =
+      files.length + ' fichier' + (files.length !== 1 ? 's' : '') + ' disponible' + (files.length !== 1 ? 's' : '');
+
+    if (files.length === 0) {
+      list.innerHTML = '<div class="empty">Aucun fichier trouvé</div>';
+      return;
+    }
+
+    list.innerHTML = files.map(f => `
+      <div class="file-item" onclick="selectFile('${f.hash}')">
+        <div class="file-icon">${fileIcon(f.filename)}</div>
+        <div class="file-info">
+          <div class="file-name">${f.filename}</div>
+          <div class="file-meta">${formatSize(f.filesize)} · ${f.nbPieces} pièces</div>
+        </div>
+        <div class="file-peers">
+          
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── DOWNLOAD : PEER ASSIGNMENT ──────────────────────────────────────────────
+  async function selectFile(hash) {
+    selectedFile = allFiles.find(f => f.hash === hash);
+    if (!selectedFile) return;
+
+    // Récupérer les peers depuis l'API
+    try {
+      const res = await fetch(`${API}/api/peers?hash=${hash}`);
+      const data = await res.json();
+      selectedFile.peers = data.peers || [];
+    } catch(e) {
+      selectedFile.peers = [];
+    }
+
+    // Round-robin assignment
+    peerAssignments = {};
+    (selectedFile.peers || []).forEach(p => peerAssignments[p] = []);
+    const peers = selectedFile.peers || [];
+    for (let i = 0; i < selectedFile.nbPieces; i++) {
+      if (peers.length === 0) break;
+      peerAssignments[peers[i % peers.length]].push(i);
+    }
+
+    // Afficher le fichier sélectionné
+    document.getElementById('selected-file-card').innerHTML = `
+      <span style="font-size:24px">${fileIcon(selectedFile.filename)}</span>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${selectedFile.filename}</div>
+        <div style="font-size:12px;color:var(--dim)">${formatSize(selectedFile.filesize)} · ${selectedFile.nbPieces} pièces · ${peers.length} peers</div>
+      </div>
+    `;
+
+    // Afficher les assignations
+    document.getElementById('peer-assignments').innerHTML = Object.entries(peerAssignments).map(([peer, pieces]) => `
+      <div class="peer-card">
+        <div class="peer-header">
+          <span class="peer-addr">${peer}</span>
+          <span class="piece-count">${pieces.length} pièces</span>
+        </div>
+      </div>
+    `).join('');
+
+    showScreen('screen-dl-peers');
+  }
+
+  // ── DOWNLOAD : PROGRESS ─────────────────────────────────────────────────────
+  async function startDownload() {
+    showScreen('screen-dl-progress');
+
+    document.getElementById('progress-filename').innerHTML =
+      `<span style="color:var(--accent)">↓</span> ${selectedFile.filename}`;
+
+    // Construire les barres de progression
+    const peersHtml = Object.entries(peerAssignments).map(([peer, pieces]) => `
+      <div class="progress-card" id="pc-${peer.replace(/[.:]/g,'-')}">
+        <div class="progress-header">
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--text)">${peer}</span>
+          <span style="font-size:12px;color:var(--accent)" id="pc-label-${peer.replace(/[.:]/g,'-')}">0/${pieces.length}</span>
+        </div>
+        <div class="progress-bar-bg"><div class="progress-bar" id="pb-${peer.replace(/[.:]/g,'-')}"></div></div>
+        <div class="progress-pieces">Pièces : [${pieces.join(', ')}]</div>
+      </div>
+    `).join('');
+    document.getElementById('progress-peers').innerHTML = peersHtml;
+    document.getElementById('log-box').innerHTML = '';
+
+    // Appeler l'API
+    try {
+      await fetch(`${API}/api/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hash: selectedFile.hash,
+          filename: selectedFile.filename,
+          filesize: selectedFile.filesize,
+          pieceSize: selectedFile.pieceSize
+        })
+      });
+      log('✓ Téléchargement lancé...');
+      // Polling du statut
+      pollDownloadStatus();
+    } catch(e) {
+      log('✗ Erreur : ' + e.message);
+    }
+  }
+
+  async function pollDownloadStatus() {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API}/api/status?hash=${selectedFile.hash}`);
+        const data = await res.json();
+
+        // Mettre à jour les barres
+        Object.entries(data.peerProgress || {}).forEach(([peer, done]) => {
+          const key = peer.replace(/[.:]/g,'-');
+          const total = (peerAssignments[peer] || []).length;
+          const pct = total > 0 ? Math.round(done / total * 100) : 100;
+          const bar = document.getElementById('pb-' + key);
+          const label = document.getElementById('pc-label-' + key);
+          if (bar) bar.style.width = pct + '%';
+          if (label) label.textContent = done + '/' + total;
+        });
+
+        (data.recentPieces || []).forEach(msg => log(msg));
+
+        if (data.status === 'done') {
+          clearInterval(interval);
+          log('✦ Fichier complet — vous êtes maintenant seeder !');
+          
+          // Déclencher le téléchargement dans le navigateur
+          const a = document.createElement('a');
+          a.href = `${API}/api/getfile?filename=${encodeURIComponent(selectedFile.filename)}`;
+          a.download = selectedFile.filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          setTimeout(() => {
+              document.getElementById('done-title').textContent = 'Téléchargement réussi ✓';
+              document.getElementById('done-sub').innerHTML =
+                  selectedFile.filename + ' · ' + formatSize(selectedFile.filesize) +
+                  '<br><span style="font-size:11px">Enregistré dans ~/Téléchargements/</span>';
+              showScreen('screen-done');
+          }, 800);
+      }
+      } catch(e) { /* silencieux */ }
+    }, 500);
+  }
+
+  function log(msg) {
+    const box = document.getElementById('log-box');
+    const line = document.createElement('div');
+    line.textContent = msg;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ── UPLOAD ──────────────────────────────────────────────────────────────────
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropzone').classList.remove('dragging');
+    const file = e.dataTransfer.files[0];
+    if (file) prepareUploadFromFile(file);
+  }
+
+  function handleFileInput(e) {
+    const file = e.target.files[0];
+    if (file) prepareUploadFromFile(file);
+  }
+
+  function prepareUploadFromFile(file) {
+    uploadFile = file;
+    uploadPath = '';
+    document.getElementById('upload-icon').textContent = fileIcon(file.name);
+    document.getElementById('upload-filename').textContent = file.name;
+    document.getElementById('upload-filesize').textContent = formatSize(file.size);
+    document.getElementById('upload-path').textContent = file.name + ' (depuis votre PC)';
+    showScreen('screen-ul-confirm');
+  }
+
+  function confirmManualPath() {
+    const path = document.getElementById('manual-path').value.trim();
+    if (!path) return;
+    uploadFile = null;
+    uploadPath = path;
+    const name = path.split('/').pop();
+    document.getElementById('upload-icon').textContent = fileIcon(name);
+    document.getElementById('upload-filename').textContent = name;
+    document.getElementById('upload-filesize').textContent = 'taille inconnue';
+    document.getElementById('upload-path').textContent = path;
+    document.getElementById('manual-path').value = ''; 
+    showScreen('screen-ul-confirm');
+  }
+
+  async function doUpload() {
+      const name = document.getElementById('upload-filename').textContent;
+      showScreen('screen-ul-progress');
+      document.getElementById('upload-progress-name').textContent = name;
+
+      let pct = 0;
+      const iv = setInterval(() => {
+          pct = Math.min(pct + Math.random() * 15 + 5, 90);
+          document.getElementById('upload-bar').style.width = pct + '%';
+          document.getElementById('upload-pct').textContent = Math.round(pct) + '%';
+      }, 200);
+
+      try {
+          let res;
+          if (uploadFile) {
+              // Fichier sélectionné depuis le PC → envoi multipart
+              const formData = new FormData();
+              formData.append('file', uploadFile);
+              res = await fetch(`${API}/api/upload`, {
+                  method: 'POST',
+                  body: formData   // pas de Content-Type header, le browser le met automatiquement
+              });
+          } else {
+              // Chemin manuel
+              res = await fetch(`${API}/api/upload`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ path: uploadPath })
+              });
+          }
+
+          const data = await res.json();
+          if (data.error) {
+              clearInterval(iv);
+              document.getElementById('upload-status-label').textContent = '✗ ' + data.error;
+              return;
+          }
+          clearInterval(iv);
+          document.getElementById('upload-bar').style.width = '100%';
+          document.getElementById('upload-pct').textContent = '100%';
+          document.getElementById('upload-status-label').textContent = 'Annoncé au tracker ✓';
+          setTimeout(() => {
+              document.getElementById('done-title').textContent = 'Fichier partagé';
+              document.getElementById('done-sub').innerHTML =
+                  (data.filename || name) + '<br><span style="font-size:11px">Vous êtes maintenant seeder sur le réseau</span>';
+              showScreen('screen-done');
+          }, 600);
+      } catch(e) {
+          clearInterval(iv);
+          document.getElementById('upload-status-label').textContent = '✗ Erreur : ' + e.message;
+      }
+  }
+
+  // ── UTILS ───────────────────────────────────────────────────────────────────
+  function formatSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+    if (b < 1024*1024*1024) return (b/(1024*1024)).toFixed(1) + ' MB';
+    return (b/(1024*1024*1024)).toFixed(1) + ' GB';
+  }
+
+  function fileIcon(name) {
+    const ext = (name || '').split('.').pop().toLowerCase();
+    if (['mp4','avi','mkv','mov'].includes(ext)) return '▶';
+    if (['jpg','jpeg','png','gif','webp'].includes(ext)) return '◈';
+    if (['mp3','wav','flac'].includes(ext)) return '♪';
+    if (['zip','tar','gz'].includes(ext)) return '⬡';
+    if (['txt','md','pdf'].includes(ext)) return '⊡';
+    return '⊞';
+  }
+</script>
+</body>
+</html>
